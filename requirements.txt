@@ -2,7 +2,7 @@ scikit-learn
 pandas
 numpy
 joblib
-evidently
+evidently==0.4.30
 fastapi
 uvicorn
 httpx
