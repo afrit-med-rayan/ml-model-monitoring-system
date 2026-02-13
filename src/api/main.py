@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 import os
 import pandas as pd
 import sys
@@ -57,6 +58,14 @@ async def trigger_monitoring():
         return {"status": "success", "message": "Monitoring report generated successfully", "report_path": "reports/monitoring_report.html"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/reports/latest")
+async def get_latest_report():
+    report_path = 'reports/monitoring_report.html'
+    if not os.path.exists(report_path):
+        raise HTTPException(status_code=404, detail="Monitoring report not found. Run monitoring first.")
+    
+    return FileResponse(report_path)
 
 if __name__ == "__main__":
     import uvicorn
