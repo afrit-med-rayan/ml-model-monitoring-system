@@ -1,7 +1,7 @@
 import pandas as pd
 import joblib
 import os
-from monitor import ModelMonitor
+from .monitor import ModelMonitor
 from evidently.pipeline.column_mapping import ColumnMapping
 
 def run_monitoring():

@@ -1,6 +1,11 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 import os
 import pandas as pd
+import sys
+
+# Add src to path to allow imports if needed, though with __init__.py it should be fine if run from root
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from monitoring.run_monitoring import run_monitoring
 
 app = FastAPI(title="ML Model Monitoring System API")
 
@@ -38,6 +43,20 @@ async def get_data_status():
             "rows": len(pd.read_csv(curr_path)) if curr_exists else 0
         }
     }
+
+@app.post("/monitoring/run")
+async def trigger_monitoring():
+    try:
+        # Check if requirements are met
+        if not os.path.exists('models/model.joblib'):
+            raise HTTPException(status_code=400, detail="Model file not found. Run training first.")
+        if not os.path.exists('data/reference.csv') or not os.path.exists('data/current.csv'):
+            raise HTTPException(status_code=400, detail="Data files not found. Generate data first.")
+            
+        run_monitoring()
+        return {"status": "success", "message": "Monitoring report generated successfully", "report_path": "reports/monitoring_report.html"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
