@@ -8,8 +8,14 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from monitoring.run_monitoring import run_monitoring
 from prometheus_fastapi_instrumentator import Instrumentator
+from prometheus_client import Gauge, Counter
 
 app = FastAPI(title="ML Model Monitoring System API")
+
+# Custom metrics
+DRIFT_SCORE = Gauge('ml_model_drift_score', 'Data drift score for the model')
+ACCURACY_SCORE = Gauge('ml_model_accuracy_score', 'Accuracy score for the model')
+PREDICTION_VOLUME = Counter('ml_model_prediction_volume', 'Total number of predictions made')
 
 @app.on_event("startup")
 async def startup():
@@ -60,6 +66,13 @@ async def trigger_monitoring():
             raise HTTPException(status_code=400, detail="Data files not found. Generate data first.")
             
         run_monitoring()
+        
+        # Simulate metric extraction from the report
+        # In a real scenario, we'd parse the Evidently JSON or use their collectors
+        DRIFT_SCORE.set(0.15)  # Example value
+        ACCURACY_SCORE.set(0.92)  # Example value
+        PREDICTION_VOLUME.inc(100)  # Example value
+        
         return {"status": "success", "message": "Monitoring report generated successfully", "report_path": "reports/monitoring_report.html"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
