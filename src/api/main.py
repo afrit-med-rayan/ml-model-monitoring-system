@@ -7,8 +7,13 @@ import sys
 # Add src to path to allow imports if needed, though with __init__.py it should be fine if run from root
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from monitoring.run_monitoring import run_monitoring
+from prometheus_fastapi_instrumentator import Instrumentator
 
 app = FastAPI(title="ML Model Monitoring System API")
+
+@app.on_event("startup")
+async def startup():
+    Instrumentator().instrument(app).expose(app)
 
 @app.get("/health")
 async def health_check():
