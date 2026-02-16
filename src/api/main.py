@@ -4,10 +4,22 @@ import os
 import pandas as pd
 import sys
 import joblib
+import yaml
 from pydantic import BaseModel
 from typing import List
 from prometheus_fastapi_instrumentator import Instrumentator
 from prometheus_client import Gauge, Counter
+
+# Load alert thresholds
+ALERTS_PATH = 'config/alerts.yaml'
+if os.path.exists(ALERTS_PATH):
+    with open(ALERTS_PATH, 'r') as f:
+        ALERTS_CONFIG = yaml.safe_load(f)
+else:
+    ALERTS_CONFIG = {
+        'drift': {'threshold': 0.5},
+        'accuracy': {'threshold': 0.8}
+    }
 
 # Add src to path to allow imports if needed
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -109,12 +121,27 @@ async def trigger_monitoring():
             
         run_monitoring()
         
-        # Simulate metric extraction from the report
-        # In a real scenario, we'd parse the Evidently JSON or use their collectors
-        DRIFT_SCORE.set(0.15)  # Example value
-        ACCURACY_SCORE.set(0.92)  # Example value
+        # Simulated values (ideally these would come from the Evidently report)
+        current_drift = 0.15
+        current_accuracy = 0.92
         
-        return {"status": "success", "message": "Monitoring report generated successfully", "report_path": "reports/monitoring_report.html"}
+        DRIFT_SCORE.set(current_drift)
+        ACCURACY_SCORE.set(current_accuracy)
+        
+        # Check thresholds
+        alerts = []
+        if current_drift > ALERTS_CONFIG['drift']['threshold']:
+            alerts.append(f"ALERT: {ALERTS_CONFIG['drift']['message']} (Value: {current_drift})")
+        if current_accuracy < ALERTS_CONFIG['accuracy']['threshold']:
+            alerts.append(f"ALERT: {ALERTS_CONFIG['accuracy']['message']} (Value: {current_accuracy})")
+            
+        return {
+            "status": "success", 
+            "message": "Monitoring report generated successfully", 
+            "report_path": "reports/monitoring_report.html",
+            "metrics": {"drift": current_drift, "accuracy": current_accuracy},
+            "alerts": alerts
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

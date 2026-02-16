@@ -1,0 +1,10 @@
+# Alert Thresholds for ML Monitoring
+drift:
+  threshold: 0.5
+  severity: critical
+  message: "Significant data drift detected in feature distributions."
+
+accuracy:
+  threshold: 0.8
+  severity: warning
+  message: "Model accuracy has dropped below the acceptable threshold."
