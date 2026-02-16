@@ -1,15 +1,23 @@
 import requests
 import time
 import random
+import os
+import logging
 
-API_URL = "http://localhost:8000/predict"
-MONITOR_URL = "http://localhost:8000/monitoring/run"
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+# Configurable API URL
+API_BASE_URL = os.getenv("API_URL", "http://localhost:8000")
+API_URL = f"{API_BASE_URL}/predict"
+MONITOR_URL = f"{API_BASE_URL}/monitoring/run"
 
 def simulate_performance_degradation():
-    print("Starting performance degradation simulation...")
+    logger.info("Starting performance degradation simulation...")
     
     # Simulate high load and noisy data
-    print("Sending 200 requests with high noise...")
+    logger.info("Sending 200 requests with high noise...")
     for i in range(200):
         # Features with high noise/randomness
         features = [random.uniform(-5, 5) for _ in range(10)]
@@ -19,19 +27,19 @@ def simulate_performance_degradation():
             if i % 10 == 0:
                 time.sleep(0.5)
             
-            requests.post(API_URL, json={"features": features})
+            requests.post(API_URL, json={"features": features}, timeout=5)
         except Exception as e:
-            print(f"Error at request {i}: {e}")
+            logger.error(f"Error at request {i}: {e}")
             
-    print("Performance simulation requests completed.")
+    logger.info("Performance simulation requests completed.")
     
     # Trigger monitoring
-    print("Triggering monitoring report generation...")
+    logger.info("Triggering monitoring report generation...")
     try:
-        response = requests.post(MONITOR_URL)
-        print(f"Monitoring result: {response.json()}")
+        response = requests.post(MONITOR_URL, timeout=30)
+        logger.info(f"Monitoring result: {response.json()}")
     except Exception as e:
-        print(f"Error triggering monitoring: {e}")
+        logger.error(f"Error triggering monitoring: {e}")
 
 if __name__ == "__main__":
     simulate_performance_degradation()

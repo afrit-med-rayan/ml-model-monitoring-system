@@ -45,6 +45,35 @@ def run_monitoring():
     report_path = os.path.join(report_dir, 'monitoring_report.html')
     monitor.save_report(report_path)
     print(f"Report generated and saved to {report_path}")
+    
+    # Extract metrics for the API
+    results = monitor.report.as_dict()
+    
+    # Try to extract data drift score
+    drift_score = 0
+    try:
+        # Evidently 0.4.x+ structure
+        for metric in results['metrics']:
+            if metric['metric'] == 'DatasetDriftMetric':
+                drift_score = metric['result']['drift_share']
+                break
+    except:
+        pass
+
+    # Try to extract accuracy
+    accuracy_score = 0
+    try:
+        for metric in results['metrics']:
+            if metric['metric'] == 'ClassificationQualityMetric':
+                accuracy_score = metric['result']['current']['accuracy']
+                break
+    except:
+        pass
+        
+    return {
+        "drift": drift_score,
+        "accuracy": accuracy_score
+    }
 
 if __name__ == "__main__":
     run_monitoring()

@@ -119,11 +119,10 @@ async def trigger_monitoring():
         if not os.path.exists('data/reference.csv') or not os.path.exists('data/current.csv'):
             raise HTTPException(status_code=400, detail="Data files not found. Generate data first.")
             
-        run_monitoring()
+        metrics = run_monitoring()
         
-        # Simulated values (ideally these would come from the Evidently report)
-        current_drift = 0.15
-        current_accuracy = 0.92
+        current_drift = metrics.get('drift', 0)
+        current_accuracy = metrics.get('accuracy', 0)
         
         DRIFT_SCORE.set(current_drift)
         ACCURACY_SCORE.set(current_accuracy)
