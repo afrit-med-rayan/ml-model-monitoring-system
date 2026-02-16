@@ -3,12 +3,15 @@ from fastapi.responses import FileResponse
 import os
 import pandas as pd
 import sys
-
-# Add src to path to allow imports if needed, though with __init__.py it should be fine if run from root
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from monitoring.run_monitoring import run_monitoring
+import joblib
+from pydantic import BaseModel
+from typing import List
 from prometheus_fastapi_instrumentator import Instrumentator
 from prometheus_client import Gauge, Counter
+
+# Add src to path to allow imports if needed
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from monitoring.run_monitoring import run_monitoring
 
 app = FastAPI(title="ML Model Monitoring System API")
 
@@ -17,13 +20,52 @@ DRIFT_SCORE = Gauge('ml_model_drift_score', 'Data drift score for the model')
 ACCURACY_SCORE = Gauge('ml_model_accuracy_score', 'Accuracy score for the model')
 PREDICTION_VOLUME = Counter('ml_model_prediction_volume', 'Total number of predictions made')
 
+class PredictionRequest(BaseModel):
+    features: List[float]
+
+model = None
+
 @app.on_event("startup")
 async def startup():
+    global model
+    model_path = 'models/model.joblib'
+    if os.path.exists(model_path):
+        model = joblib.load(model_path)
+    else:
+        print(f"Warning: Model file not found at {model_path}")
     Instrumentator().instrument(app).expose(app)
 
 @app.get("/health")
 async def health_check():
     return {"status": "ok", "message": "ML Model Monitoring System API is running"}
+
+@app.post("/predict")
+async def predict(request: PredictionRequest):
+    global model
+    if model is None:
+        # Try to load again if it wasn't loaded at startup
+        model_path = 'models/model.joblib'
+        if os.path.exists(model_path):
+            model = joblib.load(model_path)
+        else:
+            raise HTTPException(status_code=400, detail="Model not loaded and file not found")
+    
+    try:
+        # Make prediction
+        prediction = model.predict([request.features])[0]
+        
+        # Log to current.csv (Simulating production logging)
+        # In a real app, this would go to a database or log file
+        cols = [f'feature_{i+1}' for i in range(len(request.features))] + ['target']
+        df_row = pd.DataFrame([request.features + [prediction]], columns=cols)
+        
+        df_row.to_csv('data/current.csv', mode='a', header=not os.path.exists('data/current.csv'), index=False)
+        
+        PREDICTION_VOLUME.inc()
+        
+        return {"prediction": float(prediction)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/model/status")
 async def get_model_status():
@@ -71,7 +113,6 @@ async def trigger_monitoring():
         # In a real scenario, we'd parse the Evidently JSON or use their collectors
         DRIFT_SCORE.set(0.15)  # Example value
         ACCURACY_SCORE.set(0.92)  # Example value
-        PREDICTION_VOLUME.inc(100)  # Example value
         
         return {"status": "success", "message": "Monitoring report generated successfully", "report_path": "reports/monitoring_report.html"}
     except Exception as e:
